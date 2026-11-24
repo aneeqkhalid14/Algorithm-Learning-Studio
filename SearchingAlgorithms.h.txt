@@ -1,0 +1,16 @@
+#ifndef SEARCHINGALGORITHMS_H
+#define SEARCHINGALGORITHMS_H
+
+#include "ArrayStep.h"
+
+// Real, hand-written search algorithms, instrumented the same way as
+// SortingAlgorithms: one ArrayStep per comparison. Binary search requires
+// the array to already be sorted (SearchingPage sorts the working copy
+// first and tells the user this).
+class SearchingAlgorithms {
+public:
+    static int linearSearch(const int *input, int n, int target, ArrayStep *outSteps, int capacity);
+    static int binarySearch(const int *input, int n, int target, ArrayStep *outSteps, int capacity);
+};
+
+#endif // SEARCHINGALGORITHMS_H

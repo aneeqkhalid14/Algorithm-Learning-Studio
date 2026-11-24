@@ -1,0 +1,32 @@
+#ifndef TREESTEP_H
+#define TREESTEP_H
+
+#include <QString>
+#include "../core/OperationStats.h"
+
+const int TREE_STEP_MAX = 31; // enough nodes for a meaningful classroom demo
+
+// A node as drawn on screen. left/right are indices into the SAME nodes[]
+// array (not raw pointers) - this lets both BinarySearchTree (genuinely
+// pointer-based, possibly skewed/unbalanced) and MinHeap (genuinely
+// array-based, always a complete tree) be serialized into one shared shape
+// that TreeCanvas knows how to lay out and draw.
+struct TreeNodeData {
+    int value = 0;
+    bool exists = false;
+    int left = -1;
+    int right = -1;
+};
+
+struct TreeStep {
+    TreeNodeData nodes[TREE_STEP_MAX];
+    int nodeCount = 0;
+    int rootIndex = -1;
+    int highlightIndex = -1;
+    int secondaryIndex = -1;
+    bool isNewNode = false;
+    QString description;
+    OperationStats stats;
+};
+
+#endif // TREESTEP_H

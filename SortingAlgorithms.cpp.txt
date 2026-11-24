@@ -1,0 +1,222 @@
+#include "SortingAlgorithms.h"
+
+namespace {
+
+// Shared working state used while a sort runs. record() snapshots the
+// current array + highlighted indices + running stats into the output
+// array - this one function is what turns a normal sorting algorithm into
+// a step-by-step visualization.
+struct SortContext {
+    int arr[ARRAY_STEP_MAX];
+    int n = 0;
+    ArrayStep *out = nullptr;
+    int count = 0;
+    int capacity = 0;
+    OperationStats stats;
+    bool finalized[ARRAY_STEP_MAX] = {false};
+
+    void record(int a, int b, int c, bool swapping, const QString &desc)
+    {
+        if (count >= capacity) return;
+        ArrayStep &s = out[count];
+        s.size = n;
+        for (int i = 0; i < n; ++i) {
+            s.values[i] = arr[i];
+            s.finalized[i] = finalized[i];
+        }
+        s.indexA = a;
+        s.indexB = b;
+        s.indexC = c;
+        s.swapping = swapping;
+        s.description = desc;
+        s.stats = stats;
+        ++count;
+    }
+
+    void init(const int *input, int size, ArrayStep *o, int cap)
+    {
+        n = size; out = o; capacity = cap; count = 0;
+        for (int i = 0; i < n; ++i) { arr[i] = input[i]; finalized[i] = false; }
+    }
+
+    void markAllFinalized()
+    {
+        for (int i = 0; i < n; ++i) finalized[i] = true;
+    }
+};
+
+void mergeSortRec(SortContext &ctx, int lo, int hi)
+{
+    if (lo >= hi) return;
+    int mid = (lo + hi) / 2;
+    ctx.record(lo, hi, mid, false,
+        QString("Dividing range [%1..%2] at midpoint %3.").arg(lo).arg(hi).arg(mid));
+
+    mergeSortRec(ctx, lo, mid);
+    mergeSortRec(ctx, mid + 1, hi);
+
+    int temp[ARRAY_STEP_MAX];
+    int i = lo, j = mid + 1, k = lo;
+    while (i <= mid && j <= hi) {
+        ctx.stats.comparisons++;
+        ctx.record(i, j, -1, false,
+            QString("Merging: comparing %1 (pos %2) and %3 (pos %4).")
+                .arg(ctx.arr[i]).arg(i).arg(ctx.arr[j]).arg(j));
+        if (ctx.arr[i] <= ctx.arr[j]) temp[k++] = ctx.arr[i++];
+        else temp[k++] = ctx.arr[j++];
+    }
+    while (i <= mid) temp[k++] = ctx.arr[i++];
+    while (j <= hi) temp[k++] = ctx.arr[j++];
+    for (int x = lo; x <= hi; ++x) { ctx.arr[x] = temp[x]; ctx.stats.swaps++; }
+
+    ctx.record(lo, hi, -1, true, QString("Merged range [%1..%2].").arg(lo).arg(hi));
+}
+
+int partition(SortContext &ctx, int lo, int hi)
+{
+    int pivot = ctx.arr[hi];
+    ctx.record(-1, -1, hi, false, QString("Choosing pivot %1 at position %2.").arg(pivot).arg(hi));
+
+    int i = lo - 1;
+    for (int j = lo; j < hi; ++j) {
+        ctx.stats.comparisons++;
+        ctx.record(j, -1, hi, false,
+            QString("Comparing %1 (pos %2) with pivot %3.").arg(ctx.arr[j]).arg(j).arg(pivot));
+        if (ctx.arr[j] < pivot) {
+            ++i;
+            if (i != j) {
+                int tmp = ctx.arr[i]; ctx.arr[i] = ctx.arr[j]; ctx.arr[j] = tmp;
+                ctx.stats.swaps++;
+                ctx.record(i, j, hi, true, QString("Swapped positions %1 and %2.").arg(i).arg(j));
+            }
+        }
+    }
+    int tmp = ctx.arr[i + 1]; ctx.arr[i + 1] = ctx.arr[hi]; ctx.arr[hi] = tmp;
+    ctx.stats.swaps++;
+    ctx.finalized[i + 1] = true;
+    ctx.record(i + 1, hi, -1, true, QString("Placed pivot at its final position %1.").arg(i + 1));
+    return i + 1;
+}
+
+void quickSortRec(SortContext &ctx, int lo, int hi)
+{
+    if (lo >= hi) {
+        if (lo == hi) ctx.finalized[lo] = true;
+        return;
+    }
+    int p = partition(ctx, lo, hi);
+    quickSortRec(ctx, lo, p - 1);
+    quickSortRec(ctx, p + 1, hi);
+}
+
+} // namespace
+
+int SortingAlgorithms::bubbleSort(const int *input, int n, ArrayStep *outSteps, int capacity)
+{
+    SortContext ctx; ctx.init(input, n, outSteps, capacity);
+    ctx.record(-1, -1, -1, false, "Starting Bubble Sort.");
+
+    for (int pass = 0; pass < n - 1; ++pass) {
+        bool swappedThisPass = false;
+        for (int j = 0; j < n - pass - 1; ++j) {
+            ctx.stats.comparisons++;
+            ctx.record(j, j + 1, -1, false,
+                QString("Comparing positions %1 and %2 (values %3, %4).")
+                    .arg(j).arg(j + 1).arg(ctx.arr[j]).arg(ctx.arr[j + 1]));
+            if (ctx.arr[j] > ctx.arr[j + 1]) {
+                int tmp = ctx.arr[j]; ctx.arr[j] = ctx.arr[j + 1]; ctx.arr[j + 1] = tmp;
+                ctx.stats.swaps++;
+                swappedThisPass = true;
+                ctx.record(j, j + 1, -1, true,
+                    QString("Swapped - %1 was out of order.").arg(ctx.arr[j + 1]));
+            }
+        }
+        ctx.finalized[n - pass - 1] = true;
+        ctx.record(-1, -1, -1, false,
+            QString("Pass %1 complete - position %2 finalized.").arg(pass + 1).arg(n - pass - 1));
+        if (!swappedThisPass) break;
+    }
+    ctx.markAllFinalized();
+    ctx.record(-1, -1, -1, false, "Bubble Sort complete - array is fully sorted.");
+    return ctx.count;
+}
+
+int SortingAlgorithms::selectionSort(const int *input, int n, ArrayStep *outSteps, int capacity)
+{
+    SortContext ctx; ctx.init(input, n, outSteps, capacity);
+    ctx.record(-1, -1, -1, false, "Starting Selection Sort.");
+
+    for (int i = 0; i < n - 1; ++i) {
+        int minIdx = i;
+        ctx.record(i, minIdx, -1, false, QString("Assuming position %1 holds the minimum so far.").arg(i));
+        for (int j = i + 1; j < n; ++j) {
+            ctx.stats.comparisons++;
+            ctx.record(j, minIdx, -1, false,
+                QString("Comparing position %1 (%2) with current minimum at %3 (%4).")
+                    .arg(j).arg(ctx.arr[j]).arg(minIdx).arg(ctx.arr[minIdx]));
+            if (ctx.arr[j] < ctx.arr[minIdx]) {
+                minIdx = j;
+                ctx.record(j, minIdx, -1, false, QString("New minimum found at position %1.").arg(minIdx));
+            }
+        }
+        if (minIdx != i) {
+            int tmp = ctx.arr[i]; ctx.arr[i] = ctx.arr[minIdx]; ctx.arr[minIdx] = tmp;
+            ctx.stats.swaps++;
+            ctx.record(i, minIdx, -1, true, QString("Swapped position %1 with minimum at %2.").arg(i).arg(minIdx));
+        }
+        ctx.finalized[i] = true;
+        ctx.record(-1, -1, -1, false, QString("Position %1 finalized.").arg(i));
+    }
+    ctx.markAllFinalized();
+    ctx.record(-1, -1, -1, false, "Selection Sort complete - array is fully sorted.");
+    return ctx.count;
+}
+
+int SortingAlgorithms::insertionSort(const int *input, int n, ArrayStep *outSteps, int capacity)
+{
+    SortContext ctx; ctx.init(input, n, outSteps, capacity);
+    if (n > 0) ctx.finalized[0] = true;
+    ctx.record(-1, -1, -1, false, "Starting Insertion Sort - first element treated as sorted.");
+
+    for (int i = 1; i < n; ++i) {
+        int key = ctx.arr[i];
+        int j = i - 1;
+        ctx.record(i, -1, -1, false, QString("Picking up value %1 to insert into the sorted part.").arg(key));
+        while (j >= 0) {
+            ctx.stats.comparisons++;
+            ctx.record(j, j + 1, -1, false,
+                QString("Comparing sorted element %1 with key %2.").arg(ctx.arr[j]).arg(key));
+            if (ctx.arr[j] > key) {
+                ctx.arr[j + 1] = ctx.arr[j];
+                ctx.stats.swaps++;
+                ctx.record(j, j + 1, -1, true, QString("Shifting %1 one position right.").arg(ctx.arr[j]));
+                --j;
+            } else break;
+        }
+        ctx.arr[j + 1] = key;
+        for (int k = 0; k <= i; ++k) ctx.finalized[k] = true;
+        ctx.record(j + 1, -1, -1, false, QString("Inserted %1 at position %2.").arg(key).arg(j + 1));
+    }
+    ctx.record(-1, -1, -1, false, "Insertion Sort complete - array is fully sorted.");
+    return ctx.count;
+}
+
+int SortingAlgorithms::mergeSort(const int *input, int n, ArrayStep *outSteps, int capacity)
+{
+    SortContext ctx; ctx.init(input, n, outSteps, capacity);
+    ctx.record(-1, -1, -1, false, "Starting Merge Sort.");
+    mergeSortRec(ctx, 0, n - 1);
+    ctx.markAllFinalized();
+    ctx.record(-1, -1, -1, false, "Merge Sort complete - array is fully sorted.");
+    return ctx.count;
+}
+
+int SortingAlgorithms::quickSort(const int *input, int n, ArrayStep *outSteps, int capacity)
+{
+    SortContext ctx; ctx.init(input, n, outSteps, capacity);
+    ctx.record(-1, -1, -1, false, "Starting Quick Sort.");
+    quickSortRec(ctx, 0, n - 1);
+    ctx.markAllFinalized();
+    ctx.record(-1, -1, -1, false, "Quick Sort complete - array is fully sorted.");
+    return ctx.count;
+}

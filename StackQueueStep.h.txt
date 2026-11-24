@@ -1,0 +1,23 @@
+#ifndef STACKQUEUESTEP_H
+#define STACKQUEUESTEP_H
+
+#include <QString>
+#include "../core/OperationStats.h"
+
+const int SQ_CAPACITY = 8; // fixed array capacity for both the stack and the queue
+
+// One frozen moment of a stack or circular queue operation.
+struct StackQueueStep {
+    int values[SQ_CAPACITY];
+    bool occupied[SQ_CAPACITY] = {false}; // which slots currently hold real data
+    int capacity = SQ_CAPACITY;
+    bool isQueue = false; // false = array stack, true = circular queue
+    int top = -1;         // meaningful for the stack
+    int front = -1;       // meaningful for the queue
+    int rear = -1;        // meaningful for the queue
+    int highlightIndex = -1;
+    QString description;
+    OperationStats stats;
+};
+
+#endif // STACKQUEUESTEP_H

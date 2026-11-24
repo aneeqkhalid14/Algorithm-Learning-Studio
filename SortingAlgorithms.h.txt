@@ -1,0 +1,20 @@
+#ifndef SORTINGALGORITHMS_H
+#define SORTINGALGORITHMS_H
+
+#include "ArrayStep.h"
+
+// Real, hand-written sorting algorithms (no std::sort, no STL containers).
+// Each function sorts a private working copy of "input" and records an
+// ArrayStep into outSteps after every comparison and every swap, so the
+// GUI can scrub through the exact sequence of real operations the
+// algorithm performed. Returns how many steps were written.
+class SortingAlgorithms {
+public:
+    static int bubbleSort(const int *input, int n, ArrayStep *outSteps, int capacity);
+    static int selectionSort(const int *input, int n, ArrayStep *outSteps, int capacity);
+    static int insertionSort(const int *input, int n, ArrayStep *outSteps, int capacity);
+    static int mergeSort(const int *input, int n, ArrayStep *outSteps, int capacity);
+    static int quickSort(const int *input, int n, ArrayStep *outSteps, int capacity);
+};
+
+#endif // SORTINGALGORITHMS_H

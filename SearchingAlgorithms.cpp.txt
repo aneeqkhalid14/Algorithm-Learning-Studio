@@ -1,0 +1,80 @@
+#include "SearchingAlgorithms.h"
+
+namespace {
+void record(ArrayStep *out, int &count, int capacity, const int *arr, int n,
+            int a, int b, int lo, int hi, bool found, const QString &desc,
+            const OperationStats &stats)
+{
+    if (count >= capacity) return;
+    ArrayStep &s = out[count];
+    s.size = n;
+    for (int i = 0; i < n; ++i) s.values[i] = arr[i];
+    s.indexA = a;
+    s.indexB = b;
+    s.rangeLo = lo;
+    s.rangeHi = hi;
+    s.found = found;
+    s.description = desc;
+    s.stats = stats;
+    ++count;
+}
+}
+
+int SearchingAlgorithms::linearSearch(const int *input, int n, int target,
+                                       ArrayStep *outSteps, int capacity)
+{
+    OperationStats stats;
+    int count = 0;
+    record(outSteps, count, capacity, input, n, -1, -1, -1, -1, false,
+           QString("Searching for %1 from the start of the array.").arg(target), stats);
+
+    for (int i = 0; i < n; ++i) {
+        stats.comparisons++;
+        if (input[i] == target) {
+            record(outSteps, count, capacity, input, n, i, -1, -1, -1, true,
+                   QString("Found %1 at position %2!").arg(target).arg(i), stats);
+            return count;
+        }
+        record(outSteps, count, capacity, input, n, i, -1, -1, -1, false,
+               QString("Position %1 (%2) does not match %3.").arg(i).arg(input[i]).arg(target), stats);
+    }
+    record(outSteps, count, capacity, input, n, -1, -1, -1, -1, false,
+           QString("%1 was not found in the array.").arg(target), stats);
+    return count;
+}
+
+int SearchingAlgorithms::binarySearch(const int *input, int n, int target,
+                                       ArrayStep *outSteps, int capacity)
+{
+    OperationStats stats;
+    int count = 0;
+    int lo = 0, hi = n - 1;
+    record(outSteps, count, capacity, input, n, -1, -1, lo, hi, false,
+           QString("Searching for %1 in the sorted array (range 0..%2).").arg(target).arg(hi), stats);
+
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        stats.comparisons++;
+        if (input[mid] == target) {
+            record(outSteps, count, capacity, input, n, mid, -1, lo, hi, true,
+                   QString("Midpoint %1 holds %2 - target found!").arg(mid).arg(target), stats);
+            return count;
+        }
+        if (input[mid] < target) {
+            record(outSteps, count, capacity, input, n, mid, -1, lo, hi, false,
+                   QString("Midpoint %1 (%2) is less than %3 - search the right half.")
+                       .arg(mid).arg(input[mid]).arg(target), stats);
+            lo = mid + 1;
+        } else {
+            record(outSteps, count, capacity, input, n, mid, -1, lo, hi, false,
+                   QString("Midpoint %1 (%2) is greater than %3 - search the left half.")
+                       .arg(mid).arg(input[mid]).arg(target), stats);
+            hi = mid - 1;
+        }
+        record(outSteps, count, capacity, input, n, -1, -1, lo, hi, false,
+               QString("New search range is %1..%2.").arg(lo).arg(hi), stats);
+    }
+    record(outSteps, count, capacity, input, n, -1, -1, -1, -1, false,
+           QString("%1 was not found in the array.").arg(target), stats);
+    return count;
+}
